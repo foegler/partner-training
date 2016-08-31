@@ -14,39 +14,42 @@
  * the License.
  */
 
-package dataflow;
+package PartnerTraining;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
+import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
+import com.google.cloud.dataflow.sdk.values.TupleTag;
+import com.google.cloud.dataflow.sdk.values.TupleTagList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A starter example for writing Google Cloud Dataflow programs.
- *
- * <p>The example takes two strings, converts them to their upper-case
- * representation and logs them.
- *
- * <p>To run this starter example locally using DirectPipelineRunner, just
- * execute it without any additional parameters from your favorite development
- * environment.
- *
- * <p>To run this starter example using managed resource in Google Cloud
- * Platform, you should specify the following command-line options:
- *   --project=<YOUR_PROJECT_ID>
- *   --stagingLocation=<STAGING_LOCATION_IN_CLOUD_STORAGE>
- *   --runner=BlockingDataflowPipelineRunner
+ * KeepTruckin Exercise 2
+ * 
+ * This exercise introduces using the TextIO class to read and write to text files.
+ * 
+ * This exercise also introduces the concept of "side outputs".  Side outputs
+ * allow you to output multiple pCollections from the application of a single ParDo.
+ * In this example, a ParDo with a primary output of the parsed log data also produces
+ * a side output of the unparsable log lines for error reporting.
+ * 
  */
 public class Exercise2 {
-  private static final Logger LOG = LoggerFactory.getLogger(Exercise2.class);
+	final static TupleTag<PackageActivityInfo> packageObjects = new TupleTag<PackageActivityInfo>() {
+	};
+	final static TupleTag<String> extraLines = new TupleTag<String>() {
+	};
 
-  
+	private static final Logger LOG = LoggerFactory.getLogger(Exercise2.class);
+
 	static class ParseLine extends DoFn<String, PackageActivityInfo> {
 		private final Aggregator<Long, Long> invalidLines = createAggregator("invalidLogLines", new Sum.SumLongFn());
 
@@ -57,28 +60,27 @@ public class Exercise2 {
 			PackageActivityInfo info = PackageActivityInfo.Parse(logLine);
 			if (info == null) {
 				invalidLines.addValue(1L);
+				c.sideOutput(extraLines, logLine);
 			} else {
 				c.output(info);
 			}
 		}
 	}
-	
-  public static void main(String[] args) {
-    Pipeline p = Pipeline.create(
-        PipelineOptionsFactory.fromArgs(args).withValidation().create());
 
-		p.apply(Create.of("0, AN, 1467394122, 423, 372A3SZ4J98",
-				          "0, AN, 1467394122, 423##############",
-				          "404 - broken message",
-				          "0, AN, 1467394122, 423, 372A3SZ4J98"))
-	       .apply(ParDo.of(new ParseLine()))
-    .apply(ParDo.of(new DoFn<PackageActivityInfo, Void>() {
-      @Override
-      public void processElement(ProcessContext c)  {
-        LOG.info(c.element().toString());
-      }
-    }));
+	public static void main(String[] args) {
+		Pipeline p = Pipeline.create(PipelineOptionsFactory.fromArgs(args).withValidation().create());
+		PCollectionTuple results = p.apply(TextIO.Read.from("/Users/foegler/Documents/package_log.txt"))
+				.apply(ParDo.withOutputTags(packageObjects, TupleTagList.of(extraLines)).of(new ParseLine()));
 
-    p.run();
-  }
+		results.get(packageObjects).apply(ParDo.of(new DoFn<PackageActivityInfo, String>() {
+			@Override
+			public void processElement(ProcessContext c) {
+				c.output(c.element().toString());
+			}
+		})).apply(TextIO.Write.named("WriteMyFile").to("/Users/foegler/Documents/package_out.txt"));
+
+		results.get(extraLines)
+				.apply(TextIO.Write.named("WriteMyFile").to("/Users/foegler/Documents/package_bad_lines.txt"));
+		p.run();
+	}
 }

@@ -48,10 +48,11 @@ public class Exercise2Part1 {
 		// Run Configuration.
 		Pipeline p = Pipeline.create(PipelineOptionsFactory.fromArgs(args)
 				.withValidation().create());
+		
+		String filePath = "/Users/foegler/Documents/";
 
-		// Create.of generates a PCollection of strings, one per log line,
-		// using the small set of log lines contained in the array MINI_LOG.
-		p.apply(TextIO.Read.from("/Users/foegler/Documents/package_log.txt"))
+		// Use TextIO to read in a log file from disk.
+		p.apply(TextIO.Read.from(filePath + "package_log.txt"))
 		// Apply a ParDo using the parsing function provided in PackageActivityInfo.	
 		 .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
 		// Define a DoFn inline to convert the package info objects to strings. 
@@ -61,8 +62,8 @@ public class Exercise2Part1 {
 					c.output(c.element().toString());
 				}
 			}))
-		// Output the strings to a text file.
-		 .apply(TextIO.Write.to("/Users/foegler/Documents/package_info_out.txt"));
+		// Use TextIO to output the strings to a text file.
+		 .apply(TextIO.Write.to(filePath + "package_info_out.txt"));
 		p.run();
 	}
 }

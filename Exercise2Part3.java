@@ -34,27 +34,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * KeepTruckin Exercise 3
+ * KeepTruckin Exercise 2 Part 3
  * 
- * Run Exercise 2 Part 3 on Cloud Dataflow service.
- * 
- * The only change required to the file is to use a Google Storage path
- * for the input and output files rather than a local path.
- * 
- * Externally, this means any input files must have been up uploaded
- * to Google Storage.
- * 
- * Your project id and a Google Storage staging location must be set in
- * the Dataflow Run Configurations.
- * 
- * Use the BlockingDataflowPipelineRunner (under Datflow Run Configurations)
- * to execute the Dataflow job on Cloud Dataflow.
- * 
- * To get to the Dataflow Run Configurations, right click on this file in the
- * Project Explorer window.  Run As -> Dataflow Pipeline.
+ * This exercise also introduces the concept of "side outputs". Side outputs
+ * allow you to output multiple pCollections from the application of a single
+ * ParDo. In this example, a ParDo with a primary output of the parsed log data
+ * also produces a side output of the unparsable log lines for error reporting.
  * 
  */
-public class Exercise3 {
+public class Exercise2Part3 {
 	// These are the "tags" or names to be used to identify the primary and
 	// side output PCollections.
 	final static TupleTag<PackageActivityInfo> packageObjects =
@@ -62,7 +50,7 @@ public class Exercise3 {
 	final static TupleTag<String> errorLogs = new TupleTag<String>() {};
 
 	private static final Logger LOG = LoggerFactory
-			.getLogger(Exercise3.class);
+			.getLogger(Exercise2Part3.class);
 
 	// ParseLine class copied from PackageActivityInfo.java and modified to
 	// produce a side output of the error log lines.
@@ -90,7 +78,7 @@ public class Exercise3 {
 		Pipeline p = Pipeline.create(PipelineOptionsFactory.fromArgs(args)
 			.withValidation().create());
 		
-		String filePath = "gs://deft-foegler/";
+		String filePath = "/Users/foegler/Documents/";
 
 		// Use .withOutputTags to pass TupleTags to the ParDo.  The first
 		// argument is the tag for the primary outputPCollection. The second
@@ -108,11 +96,11 @@ public class Exercise3 {
 		results.get(packageObjects).apply(
 			TextIO.Write.withCoder(
 					StringDelegateCoder.of(PackageActivityInfo.class))
-					.to(filePath + "output/package_out.txt"));
+					.to(filePath + "package_out.txt"));
 
 		// Retrieve the side output and write to a separate file.
 		results.get(errorLogs).apply(
-			TextIO.Write.to(filePath + "output/package_bad_lines.txt"));
+			TextIO.Write.to(filePath + "package_bad_lines.txt"));
 		p.run();
 	}
 }

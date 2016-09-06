@@ -101,7 +101,7 @@ public class Exercise4 {
 		 	}))
 		  // Write the Table rows to the output table.  The dataset must already exist
 		  // before executing this command.  If you have not created it, use the BigQuery
-		  // UI in the Developers Conolse to create the dataset.
+		  // UI in the Developers Console to create the dataset.
 		  //
 		  // With the option CREATE_IF_NEEDED, the table will be created if it doesn't
 		  // already exist.

@@ -16,7 +16,12 @@
 
 package PartnerTraining;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashSet;
+
+import PartnerTraining.Exercise7.FormatOutput;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -40,40 +45,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Keep Truckin Exercise 5
+ * Keep Truckin Exercise 11 Part 1
  * 
- * Keyed operations: WithKey and GroupByKey
- * 
- * Use GroupByKey to count the number of unique VIP packages
- * surfacing at each location.
- * 
- * VIP package ids begin with "VIP".
+ * Use GroupByKey to group by hour.
  */
 @SuppressWarnings("serial")
-public class Exercise5 {
-	private static final Logger LOG = LoggerFactory.getLogger(Exercise5.class);
+public class Exercise11Part1 {
+	private static final Logger LOG = LoggerFactory.getLogger(Exercise11Part1.class);
 
-	// This DoFn operates on the output of a GroupByKey, which is a
-	// key-value pair.  The value is an Iterable of all values for
-	// the key.
-	static class FindUniqueVIPPackages extends
-			DoFn<KV<String, Iterable<PackageActivityInfo>>, String> {
+	// A function to format the output count results.
+	public static class FormatOutput extends
+			SimpleFunction<KV<Long, Long>, String> {
 		@Override
-		public void processElement(ProcessContext c) {
-			// Create a local set of packages seen at this location
-			// to remove duplicate entries.
-			HashSet<String> previousPackages = new HashSet<String>();
-			for (PackageActivityInfo packageInfo : c.element().getValue()) {
-				String currentPackageId = packageInfo.getPackageId();
-				// Only add VIP packages to the set.
-				if (currentPackageId.startsWith("VIP")) {
-					previousPackages.add(currentPackageId);
-				}
-			}
-			c.output(c.element().getKey() + ": " + previousPackages.size());
-			// If running on Cloud Dataflow, the log line below
-			// would appear in Cloud Logging
-			// LOG.info(c.element().getKey());
+		public String apply(KV<Long, Long> input) {
+			Date date = new Date();
+			date.setTime(input.getKey());
+			return date + ": " + input.getValue();
 		}
 	}
 
@@ -94,21 +81,26 @@ public class Exercise5 {
 		p.apply(TextIO.Read.from(filePath + "package_log.txt"))
 		// Parse the log lines into objects.
 		 .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
-		// Extract the key from each object.
+		// Extract the key from each object. The key for each activity
+		// is the time rounded to the start of the hour.
 		 .apply(WithKeys
-				.of(new SerializableFunction<PackageActivityInfo, String>() {
-					public String apply(PackageActivityInfo s) {
-						return s.getLocation();
-					}
-				}))
-		// Apply GroupByKey to collect all objects with the same
-		// location together.
-		 .apply(GroupByKey.<String, PackageActivityInfo> create())
-		// Count the number of unique VIP packages at each location. 
-		 .apply(ParDo.of(new FindUniqueVIPPackages()))
+					.of(new SerializableFunction<PackageActivityInfo, Long>() {
+						public Long apply(PackageActivityInfo s) {
+							GregorianCalendar time = new GregorianCalendar();
+							time.setTime(s.getTime());
+							time.set(Calendar.MINUTE, 0);
+							time.set(Calendar.SECOND, 0);
+							time.set(Calendar.MILLISECOND, 0);
+							return time.getTime().getTime();
+						}
+					}))
+		// Count the objects from the same hour.
+		 .apply(Count.<Long, PackageActivityInfo> perKey())
+		// Format the output.
+		 .apply(MapElements.via(new FormatOutput()))
 		// Report the results to file. 
-		 .apply(TextIO.Write.named("WriteVIPCounts").to(
-				 filePath + "unique_vip_pkgs_count.txt"));
+		 .apply(TextIO.Write.named("WritePerHourCounts").to(
+				 filePath + "per_hour_count.txt"));
 		p.run();
 	}
 }

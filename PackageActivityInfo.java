@@ -2,6 +2,7 @@ package PartnerTraining;
 
 import java.util.Date;
 
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,10 +11,9 @@ import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.transforms.DoFn.ProcessContext;
 
 /* Simple class representing metadata about a package's pickup or
- * dropoff. Is meant to be read from a log line. 
+ * drop-off. Is meant to be read from a log line. 
  */
 @DefaultCoder(AvroCoder.class)
 public class PackageActivityInfo {
@@ -68,7 +68,7 @@ public class PackageActivityInfo {
 				return null;
 			}
 			pickup.location = pieces[1].trim();
-			pickup.time = new Date(Long.parseLong(pieces[2].trim()));
+			pickup.time = new Date(Long.parseLong(pieces[2].trim()) * 1000);
 			pickup.truckId = Integer.parseInt(pieces[3].trim());
 			pickup.packageId = pieces[4].trim();
 			return pickup;
@@ -89,7 +89,7 @@ public class PackageActivityInfo {
 				return null;
 			pickup.isArrival = false;
 			pickup.location = "AR";
-			pickup.time = new Date(Long.parseLong(pieces[2].trim()));
+			pickup.time = new Date(Long.parseLong(pieces[2].trim()) * 1000);
 			pickup.truckId = Integer.parseInt(pieces[3].trim());
 			pickup.packageId = pieces[4].trim();
 			return pickup;

@@ -16,66 +16,44 @@
 
 package PartnerTraining;
 
-import java.util.HashSet;
-
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.Count;
-import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
+import com.google.cloud.dataflow.sdk.transforms.DoFn.ProcessContext;
 import com.google.cloud.dataflow.sdk.transforms.MapElements;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.transforms.SimpleFunction;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.transforms.WithKeys;
+import com.google.cloud.dataflow.sdk.transforms.windowing.FixedWindows;
+import com.google.cloud.dataflow.sdk.transforms.windowing.IntervalWindow;
+import com.google.cloud.dataflow.sdk.transforms.windowing.Window;
 import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
 
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Keep Truckin Exercise 5
+ * Keep Truckin Exercise 11 Part 2
  * 
- * Keyed operations: WithKey and GroupByKey
- * 
- * Use GroupByKey to count the number of unique VIP packages
- * surfacing at each location.
- * 
- * VIP package ids begin with "VIP".
+ * Use Windows to group by hour.
  */
 @SuppressWarnings("serial")
-public class Exercise5 {
-	private static final Logger LOG = LoggerFactory.getLogger(Exercise5.class);
+public class Exercise11Part2 {
+	private static final Logger LOG = LoggerFactory.getLogger(Exercise11Part2.class);
 
-	// This DoFn operates on the output of a GroupByKey, which is a
-	// key-value pair.  The value is an Iterable of all values for
-	// the key.
-	static class FindUniqueVIPPackages extends
-			DoFn<KV<String, Iterable<PackageActivityInfo>>, String> {
-		@Override
-		public void processElement(ProcessContext c) {
-			// Create a local set of packages seen at this location
-			// to remove duplicate entries.
-			HashSet<String> previousPackages = new HashSet<String>();
-			for (PackageActivityInfo packageInfo : c.element().getValue()) {
-				String currentPackageId = packageInfo.getPackageId();
-				// Only add VIP packages to the set.
-				if (currentPackageId.startsWith("VIP")) {
-					previousPackages.add(currentPackageId);
-				}
+	// A function to format the output count results.
+	public static class FormatOutput extends DoFn<KV<String, Long>, String>
+    	implements DoFn.RequiresWindowAccess {
+	   @Override
+	   	public void processElement(ProcessContext c) {
+				c.output( c.element().getKey() + ": " + c.element().getValue() + " " + ((IntervalWindow) c.window()).start()) ;
 			}
-			c.output(c.element().getKey() + ": " + previousPackages.size());
-			// If running on Cloud Dataflow, the log line below
-			// would appear in Cloud Logging
-			// LOG.info(c.element().getKey());
 		}
-	}
 
 	public static void main(String[] args) {
 		Pipeline p = Pipeline.create(PipelineOptionsFactory.fromArgs(args)
@@ -94,21 +72,34 @@ public class Exercise5 {
 		p.apply(TextIO.Read.from(filePath + "package_log.txt"))
 		// Parse the log lines into objects.
 		 .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
-		// Extract the key from each object.
+		 // Since bounded data sources do not contain timestamps, we need to
+		 // emit each element from the PCollection with the time as the
+		 // timestamp.
+		 .apply(ParDo.of(new DoFn<PackageActivityInfo, PackageActivityInfo>() {
+		    public void processElement(ProcessContext c) {
+	            // Extract the timestamp from log entry we're currently processing.
+	            Instant logTimeStamp = new Instant(((PackageActivityInfo) c.element()).getTime().getTime());
+	            // Use outputWithTimestamp to emit the log entry with timestamp attached.
+	            c.outputWithTimestamp(c.element(), logTimeStamp);
+		     }}))
+		// Define a hour long window for the data.
+		 .apply(Window.<PackageActivityInfo>into(
+				 FixedWindows.of(Duration.standardMinutes(60))))
+		// Extract the location key from each object.
 		 .apply(WithKeys
 				.of(new SerializableFunction<PackageActivityInfo, String>() {
 					public String apply(PackageActivityInfo s) {
 						return s.getLocation();
 					}
-				}))
-		// Apply GroupByKey to collect all objects with the same
-		// location together.
-		 .apply(GroupByKey.<String, PackageActivityInfo> create())
-		// Count the number of unique VIP packages at each location. 
-		 .apply(ParDo.of(new FindUniqueVIPPackages()))
+				}))				 
+		// Count the objects from the same hour, per location.
+		 .apply(Count.<String, PackageActivityInfo> perKey())
+		// Format the output.  Need to use a ParDo since need access
+		// to the window time.
+		 .apply(ParDo.of(new FormatOutput()))
 		// Report the results to file. 
-		 .apply(TextIO.Write.named("WriteVIPCounts").to(
-				 filePath + "unique_vip_pkgs_count.txt"));
+		 .apply(TextIO.Write.named("WritePerHourCounts").to(
+				 filePath + "per_hour_per_location_count.txt"));
 		p.run();
 	}
 }

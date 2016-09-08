@@ -55,12 +55,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Keep Truckin Exercise 11 Part 3
+ * Keep Truckin Exercise 13
  * 
  * Use Windows to group by hour and write to BigQuery.
  * This exercise is meant to prepare for the transition
  * to Streaming Dataflows, where writing to BigQuery and
- * PubSub are far more comman than text files.
+ * PubSub are far more common than text files.
  */
 @SuppressWarnings("serial")
 public class Exercise13 {
@@ -77,15 +77,6 @@ public class Exercise13 {
 			}
 	 	}
 	
-	// TODO(laraschmidt): refactor this out or delete this.
-	public static class UnboundedGenerator
-			extends PTransform<PBegin, PCollection<PackageActivityInfo>> {
-		@Override
-		public PCollection<PackageActivityInfo> apply(PBegin input) {
-			return input.apply(Read.from(new GenericUnboundedSource()));
-		}
-	}
-	
 	public static void main(String[] args) {
 		PipelineOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().create();
 		// Convert to DataflowPipelineOptions and set streaming to true
@@ -101,19 +92,7 @@ public class Exercise13 {
 		TableSchema schema = new TableSchema().setFields(fields);
 		
 		// Read the log lines from file.
-		PCollection<KV<String, Long>> thing = p.apply(new UnboundedGenerator())
-		// Parse the log lines into objects.
-		// .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
-		 // Since bounded data sources do not contain timestamps, we need to
-		 // emit each element from the PCollection with the time as the
-		 // timestamp.
-		 .apply(ParDo.of(new DoFn<PackageActivityInfo, PackageActivityInfo>() {
-		    public void processElement(ProcessContext c) {
-	            // Extract the timestamp from log entry we're currently processing.
-	            Instant logTimeStamp = new Instant(((PackageActivityInfo) c.element()).getTime());
-	            // Use outputWithTimestamp to emit the log entry with timestamp attached.
-	            c.outputWithTimestamp(c.element(), logTimeStamp);
-		     }}))
+		PCollection<KV<String, Long>> thing = p.apply(new GenericUnboundedSourceGenerator())
 		// Define a hour long window for the data.
 		 .apply(Window.<PackageActivityInfo>into(
 				 FixedWindows.of(Duration.standardMinutes(1))))
@@ -138,7 +117,7 @@ public class Exercise13 {
 		  // Use the BigQuery Query UI to verify your export:
 		  // SELECT * FROM partner_training_dataset.package_info LIMIT 5;
 		  .apply(BigQueryIO.Write.named("BigQuery-Write")
-				.to("laradataset.package_counts2")
+				.to("laradataset.package_counts4")
 				.withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
 				.withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
 				.withSchema(schema));

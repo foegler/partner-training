@@ -92,7 +92,7 @@ public class Exercise13 {
 		TableSchema schema = new TableSchema().setFields(fields);
 		
 		// Read the log lines from file.
-		PCollection<KV<String, Long>> thing = p.apply(new GenericUnboundedSourceGenerator())
+		p.apply(new GenericUnboundedSourceGenerator())
 		// Define a hour long window for the data.
 		 .apply(Window.<PackageActivityInfo>into(
 				 FixedWindows.of(Duration.standardMinutes(1))))
@@ -104,10 +104,10 @@ public class Exercise13 {
 					}
 				}))			 
 		// Count the objects from the same hour, per location.
-		 .apply(Count.<String, PackageActivityInfo> perKey());
+		 .apply(Count.<String, PackageActivityInfo> perKey())
 		// Format the output.  Need to use a ParDo since need access
 		// to the window time.
-		thing.apply(ParDo.of(new WindowCountsToRows()))
+		apply(ParDo.of(new WindowCountsToRows()))
 		  // Write the Table rows to the output table.  The dataset must already exist
 		  // before executing this command.  If you have not created it, use the BigQuery
 		  // UI in the Developers Console to create the dataset.

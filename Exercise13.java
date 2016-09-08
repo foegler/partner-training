@@ -107,7 +107,7 @@ public class Exercise13 {
 		 .apply(Count.<String, PackageActivityInfo> perKey())
 		// Format the output.  Need to use a ParDo since need access
 		// to the window time.
-		apply(ParDo.of(new WindowCountsToRows()))
+		.apply(ParDo.of(new WindowCountsToRows()))
 		  // Write the Table rows to the output table.  The dataset must already exist
 		  // before executing this command.  If you have not created it, use the BigQuery
 		  // UI in the Developers Console to create the dataset.

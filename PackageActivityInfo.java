@@ -25,6 +25,15 @@ public class PackageActivityInfo {
 	private int truckId; // ID of the truck doing the drop off or pick up. 0 if customer.
 	private String packageId; // ID of the package in transit.
 
+	public PackageActivityInfo() {}
+	public PackageActivityInfo(boolean isArrival, String location, Date time, int truckId, String packageId) {
+		this.isArrival = isArrival;
+		this.location = location;
+		this.time = time;
+		this.truckId = truckId;
+		this.packageId = packageId;
+	}
+	
 	@Override
 	public String toString() {
 		return "PackageActivityInfo [isArrival=" + isArrival + ", location=" + location + ", packageId=" + packageId + "]";
@@ -50,6 +59,22 @@ public class PackageActivityInfo {
 		return packageId;
 	}
 	
+	public void setArrival(boolean arrival) {
+		isArrival = arrival;
+	}
+	public void setLocation(String loc) {
+		location = loc;
+	}
+	public void setTime(Date time) {
+		this.time = time;
+	}
+	public void setTruckId(int truckId) {
+		this.truckId = truckId;
+	}
+	public void setPackageId(String packageId) {
+		this.packageId = packageId;
+	}
+
 	// Return null if there is any error parsing.
 	// Delimits line by the given delimeter.
 	// Logline: "0, AN, 1467394122, 423, 372A3SZ4J98"

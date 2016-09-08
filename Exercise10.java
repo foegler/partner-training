@@ -14,7 +14,7 @@
  * the License.
  */
 
-package dataflow;
+package PartnerTraining;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -85,7 +85,7 @@ public class Exercise10 {
 	@SuppressWarnings("serial")
 	static class TruckIdPartition implements Partition.PartitionFn<PackageActivityInfo> {
         public int partitionFor(PackageActivityInfo pack, int num_partitions) {
-            return pack.truckId < 200 ? 0 : 1;
+            return pack.getTruckId() < 200 ? 0 : 1;
         }
 	}
 	public static void main(String[] args) {

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package dataflow;
+package PartnerTraining;
 
 import com.google.cloud.dataflow.sdk.coders.AvroCoder;
 import com.google.cloud.dataflow.sdk.coders.Coder;
@@ -170,8 +170,8 @@ public class GenericUnboundedSource
 			} else {
 				// The next event is available now. Figure out what its actual
 				// event time was:
-				currentEvent = new PackageActivityInfo(nextEvent.isArrival, nextEvent.location,
-						nextEvent.time, nextEvent.truckId, nextEvent.packageId);
+				currentEvent = new PackageActivityInfo(nextEvent.isArrival(), nextEvent.getLocation(),
+						nextEvent.getTime(), nextEvent.getTruckId(), nextEvent.getPackageId());
         
         // And we should peek to see when the next event will be ready.
         nextEvent = items.next();

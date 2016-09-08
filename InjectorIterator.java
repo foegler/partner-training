@@ -1,4 +1,4 @@
-package dataflow;
+package PartnerTraining;
 
 import com.google.api.client.repackaged.com.google.common.base.Objects;
 import com.google.api.client.util.Preconditions;
@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -100,11 +101,11 @@ public class InjectorIterator implements Iterator<PackageActivityInfo> {
 	@Override
 	public PackageActivityInfo next() {
 		PackageActivityInfo info = new PackageActivityInfo();
-		info.location = randomItem(LOCATIONS);
-		info.time = timestamps.next().getMillis();
-		info.truckId = randomItem(myTrucks);
+		info.setLocation(randomItem(LOCATIONS));
+		info.setTime(new Date(timestamps.next().getMillis()));
+		info.setTruckId(randomItem(myTrucks));
 		Integer i = new Integer(random.nextInt());
-		info.packageId = i.toString();
+		info.setPackageId(i.toString());
 		return info;
 	}
 

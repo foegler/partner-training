@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * existing 'SERVICE' run configuration.
  */
 @SuppressWarnings("serial")
-public class Exercise6 {
+public class Exercise6Part1 {
 	private static final Logger LOG = LoggerFactory.getLogger(Exercise6.class);
 
 	static class ParseLine extends DoFn<String, PackageActivityInfo> {

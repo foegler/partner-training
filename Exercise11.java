@@ -14,7 +14,7 @@
  * the License.
  */
 
-package dataflow;
+package PartnerTraining;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.AvroCoder;

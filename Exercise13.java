@@ -91,11 +91,7 @@ public class Exercise13 {
 		// Convert to DataflowPipelineOptions and set streaming to true
 		DataflowPipelineOptions dataflowOptions= options.as(DataflowPipelineOptions.class);
 		dataflowOptions.setStreaming(true);
-		
-		// Convert to ExerciseOptions and set the dataset that this pipeline uses.
-	    ExerciseOptions eo = dataflowOptions.as(ExerciseOptions.class);
-	    eo.setDataset("laradataset");
-		Pipeline p = Pipeline.create(eo);
+		Pipeline p = Pipeline.create(dataflowOptions);
 		
 		// Define the table schema for the BigQuery output table.
 		List<TableFieldSchema> fields = new ArrayList<>();

@@ -26,6 +26,7 @@ import com.google.cloud.dataflow.sdk.transforms.Flatten;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.Partition;
 import com.google.cloud.dataflow.sdk.coders.AvroCoder;
+import com.google.cloud.dataflow.sdk.coders.StringDelegateCoder;
 import com.google.cloud.dataflow.sdk.transforms.Sum;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionList;
@@ -33,82 +34,103 @@ import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.dataflow.sdk.values.TupleTagList;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A starter example for writing Google Cloud Dataflow programs.
- *
- * <p>
- * The example takes two strings, converts them to their upper-case
- * representation and logs them.
- *
- * <p>
- * To run this starter example locally using DirectPipelineRunner, just execute
- * it without any additional parameters from your favorite development
- * environment.
- *
- * <p>
- * To run this starter example using managed resource in Google Cloud Platform,
- * you should specify the following command-line options:
- * --project=<YOUR_PROJECT_ID>
- * --stagingLocation=<STAGING_LOCATION_IN_CLOUD_STORAGE>
- * --runner=BlockingDataflowPipelineRunner
+ * 
+ * Keep Truckin Exercise 10
+ * 
+ * Read from two different sources.
+ * 
+ * In this exercise, you will generate two output files. One which has
+ * information about packages shipped from newer truck ids (which are greater
+ * than 200) and older truck ids.
+ * 
+ * You will also process from an additional source, an old Keep Truckin log
+ * format that our older data is stored in.
+ * TODO(laraschmidt): Make sure this runs after cleanups
  */
+
 public class Exercise10 {
 	private static final Logger LOG = LoggerFactory.getLogger(Exercise10.class);
 
-	static class ParseLine extends DoFn<String, PackageActivityInfo> {
-		@Override
-		public void processElement(ProcessContext c) {
-			String logLine = c.element();
-			LOG.info("Parsing log line: " + logLine);
-			PackageActivityInfo info = PackageActivityInfo.Parse(logLine);
-			if (info != null) {
-				c.output(info);
-			}
-		}
-	}
-	
+	// A DoFn which processes each line of the old log into PackageActivityInfo.
+	// This
+	// is similar to normal parsing except we use the old parsing function
+	// instead.
 	static class ParseOldLines extends DoFn<String, PackageActivityInfo> {
 		@Override
 		public void processElement(ProcessContext c) {
 			String logLine = c.element();
-			LOG.info("Parsing old log line: " + logLine);
 			PackageActivityInfo info = PackageActivityInfo.ParseOld(logLine);
-			if (info != null) {
+			if (info != null) { // Just ignore errors for this exercise
 				c.output(info);
 			}
 		}
 	}
-	
+
+	// A Parition which partitions the results into newer and older trucks based
+	// on ID.
+	// We know that num_partitions will be 2, since we are calling it.
 	@SuppressWarnings("serial")
 	static class TruckIdPartition implements Partition.PartitionFn<PackageActivityInfo> {
-        public int partitionFor(PackageActivityInfo pack, int num_partitions) {
-            return pack.getTruckId() < 200 ? 0 : 1;
-        }
+
+		// For each package activity info, specifies which partition to place it
+		// into.
+		public int partitionFor(PackageActivityInfo pack, int num_partitions) {
+			return pack.getTruckId() < 200 ? 0 : 1;
+		}
 	}
+
 	public static void main(String[] args) {
 		Pipeline p = Pipeline
 				.create(PipelineOptionsFactory.fromArgs(args).withValidation().create());
-		PCollection<PackageActivityInfo> results = p
-				.apply(TextIO.Read.from("gs://clouddfe-laraschmidt/package_log.txt"))
-				.apply(ParDo.of(new ParseLine()));
-		PCollection<PackageActivityInfo> old_results = p
-				.apply(TextIO.Read.from("gs://clouddfe-laraschmidt/package_log_old.txt"))
+
+		String filePath = "gs://deft-foegler/";
+		if (p.getOptions().getRunner().getSimpleName().equals("DirectPipelineRunner")) {
+			// The location of small test files on your local machine
+			filePath = "/Users/foegler/Documents/";
+		} else {
+			// Your staging location or any other cloud storage location where
+			// you will upload files.
+			filePath = "gs://deft-foegler/";
+		}
+
+		// From the normal log, parse the log line into PackageActiviyInfo
+		// objects
+		PCollection<PackageActivityInfo> input = p
+				.apply(TextIO.Read.from(filePath + "package_log.txt"))
+				.apply(ParDo.of(new PackageActivityInfo.ParseLine()));
+
+		// From the older log, parse the log line using the older parsing
+		// function.
+		PCollection<PackageActivityInfo> old_input = p
+				.apply(TextIO.Read.from(filePath + "package_log_old.txt"))
 				.apply(ParDo.of(new ParseOldLines()));
-		PCollectionList<PackageActivityInfo> pcs = PCollectionList.of(results).and(old_results);
-		PCollection<PackageActivityInfo> packages = pcs.apply(Flatten.<PackageActivityInfo>pCollections());
-		PCollectionList<PackageActivityInfo> truck_lists = packages.apply(Partition.of(2, new TruckIdPartition()));
+
+		// Flatten the sources together into one input.
+		PCollection<PackageActivityInfo> packages = PCollectionList.of(input).and(old_input)
+				.apply(Flatten.<PackageActivityInfo>pCollections());
+
+		// Apply the partition from above.
+		PCollectionList<PackageActivityInfo> truck_lists = packages
+				.apply(Partition.of(2, new TruckIdPartition()));
+
+		// TODO(laraschmidt): Fix this once you figure out how array init works in java...
+		ArrayList<String> output_files = new ArrayList<>();
+		output_files.add("old_truck_packages.txt");
+		output_files.add("new_truck_packages.txt");
 		
+		// Go through each resulting piece of the partition and write to a file.
 		for (int i = 0; i < 2; i++) {
-			truck_lists.get(i).apply(ParDo.of(new DoFn<PackageActivityInfo, String>() {
-				@Override
-				public void processElement(ProcessContext c) {
-					c.output(c.element().toString());
-				}
-			})).apply(TextIO.Write.named("WriteMyFile").to("gs://clouddfe-laraschmidt/package_truck_"+i+".txt"));
-			
+			truck_lists.get(i)
+					.apply(TextIO.Write.withCoder(StringDelegateCoder.of(PackageActivityInfo.class))
+							.to(filePath + output_files.get(i)));
+
 		}
 		p.run();
 	}

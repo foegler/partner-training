@@ -61,7 +61,6 @@ public class Exercise7 {
 		@Override
 		public String apply(KV<String, Long> input) {
 			return input.getKey() + ": " + input.getValue();
-
 		}
 	}
 

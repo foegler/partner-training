@@ -35,28 +35,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A starter example for writing Google Cloud Dataflow programs.
- *
- * <p>
- * The example takes two strings, converts them to their upper-case
- * representation and logs them.
- *
- * <p>
- * To run this starter example locally using DirectPipelineRunner, just execute
- * it without any additional parameters from your favorite development
- * environment. In Eclipse, this corresponds to the existing 'LOCAL' run
- * configuration.
- *
- * <p>
- * To run this starter example using managed resource in Google Cloud Platform,
- * you should specify the following command-line options:
- * --project=<YOUR_PROJECT_ID>
- * --stagingLocation=<STAGING_LOCATION_IN_CLOUD_STORAGE>
- * --runner=BlockingDataflowPipelineRunner In Eclipse, you can just modify the
- * existing 'SERVICE' run configuration.
+ * 
+ * Keep Truckin Exercise 20
+ * 
+ * Use a different coder.
+ * 
+ * NOTE: This exercise is not cleaned up as we decided
+ * to drop it due to not being useful.
  */
+
 @SuppressWarnings("serial")
-public class Exercise11 {
+public class Exercise20 {
 	private static final Logger LOG = LoggerFactory.getLogger(Exercise11.class);
 
 	static class ParseLine extends DoFn<String, PackageActivityInfo> {

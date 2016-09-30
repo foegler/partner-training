@@ -57,10 +57,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Keep Truckin Exercise 13
  * 
- * Use Windows to group by hour and write to BigQuery.
- * This exercise is meant to prepare for the transition
- * to Streaming Dataflows, where writing to BigQuery and
- * PubSub are far more common than text files.
+ * First streaming pipeline.
+ * 
+ * Build a streaming pipeline that groups by hour and
+ * continually writes the results to BigQuery.
  */
 @SuppressWarnings("serial")
 public class Exercise13 {
@@ -82,7 +82,11 @@ public class Exercise13 {
 		// Convert to DataflowPipelineOptions and set streaming to true
 		DataflowPipelineOptions dataflowOptions= options.as(DataflowPipelineOptions.class);
 		dataflowOptions.setStreaming(true);
+		// Create the pipeline with the new options
 		Pipeline p = Pipeline.create(dataflowOptions);
+		
+		// The table to write to PROJECT:DATASET:TABLE
+		String table = "google.com:deft-testing-integration:partner_training_dataset.package_counts_streaming";
 		
 		// Define the table schema for the BigQuery output table.
 		List<TableFieldSchema> fields = new ArrayList<>();
@@ -91,7 +95,8 @@ public class Exercise13 {
 		fields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
 		TableSchema schema = new TableSchema().setFields(fields);
 		
-		// Read the log lines from file.
+		// Read in PackageActivityInfo objects. Here we just generate them on the fly
+		// but a real pipeline might read them from PubSub or another unbounded source.
 		p.apply(new GenericUnboundedSourceGenerator())
 		// Define a hour long window for the data.
 		 .apply(Window.<PackageActivityInfo>into(
@@ -104,7 +109,7 @@ public class Exercise13 {
 					}
 				}))			 
 		// Count the objects from the same hour, per location.
-		 .apply(Count.<String, PackageActivityInfo> perKey())
+		.apply(Count.<String, PackageActivityInfo> perKey())
 		// Format the output.  Need to use a ParDo since need access
 		// to the window time.
 		.apply(ParDo.of(new WindowCountsToRows()))
@@ -114,10 +119,11 @@ public class Exercise13 {
 		  //
 		  // With the option CREATE_IF_NEEDED, the table will be created if it doesn't
 		  // already exist.
+		  // WRITE_APPEND as we want to append results to the table as we go.
 		  // Use the BigQuery Query UI to verify your export:
 		  // SELECT * FROM partner_training_dataset.package_info LIMIT 5;
 		  .apply(BigQueryIO.Write.named("BigQuery-Write")
-				.to("laradataset.package_counts4")
+				.to(table)
 				.withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
 				.withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
 				.withSchema(schema));

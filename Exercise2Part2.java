@@ -17,22 +17,10 @@
 package PartnerTraining;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.AvroCoder;
-import com.google.cloud.dataflow.sdk.coders.StringDelegateCoder;
 import com.google.cloud.dataflow.sdk.io.AvroIO;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
-import com.google.cloud.dataflow.sdk.values.TupleTag;
-import com.google.cloud.dataflow.sdk.values.TupleTagList;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * KeepTruckin Exercise 2 Part 2
@@ -42,32 +30,38 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class Exercise2Part2 {
-	public static void main(String[] args) {
-		Pipeline p = Pipeline.create(PipelineOptionsFactory.fromArgs(args)
-				.withValidation().create());
-		
-		String filePath = "/Users/foegler/Documents/";
+  public static void main(String[] args) {
+    Pipeline p =
+        Pipeline.create(PipelineOptionsFactory.fromArgs(args)
+                                              .withValidation().create());
 
-		// Use TextIO to read in a log file from disk.
-		p.apply(TextIO.Read.from(filePath + "package_log.txt"))
-		// Apply a ParDo using the parsing function provided in
-		// PackageActivityInfo.
-		 .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
-		// Write to a text file using the StringDelegateCoder, which
-		// uses the toString method defined on the class to serialize
-	    // the objects.
-		/* .apply(TextIO.Write.withCoder(
-				StringDelegateCoder.of(PackageActivityInfo.class)).to(
-				filePath + "package_info_out.txt")); */
-		// Write to a text file using the AvroCoder, to serialize
-	    // the objects.
-		/* .apply(TextIO.Write.withCoder(
-				AvroCoder.of(PackageActivityInfo.class)).to(
-				filePath + "package_info_out.txt")); */
-		// Write to a text file using the AvroIO transform to serialize
-	    // the objects.
-		 .apply(AvroIO.Write.withSchema(PackageActivityInfo.class).to(
-				filePath + "package_info_out.txt"));
-		p.run();
-	}
+    String filePath = "/Users/foegler/Documents/";
+
+    // Use TextIO to read in a log file from disk.
+    p.apply(TextIO.Read.from(filePath + "package_log.txt"))
+     // Apply a ParDo using the parsing function provided in
+     // PackageActivityInfo.
+     .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
+     // Write to a text file using the StringDelegateCoder, which
+     // uses the toString method defined on the class to serialize
+     // the objects.
+     /*
+      * .apply(TextIO.Write.withCoder(
+      * StringDelegateCoder.of(PackageActivityInfo.class)).to( filePath +
+      * "package_info_out.txt"));
+      */
+     // Write to a text file using the AvroCoder, to serialize
+     // the objects.
+     /*
+      * .apply(TextIO.Write.withCoder(
+      * AvroCoder.of(PackageActivityInfo.class)).to( filePath +
+      * "package_info_out.txt"));
+      */
+     // Write to a text file using the AvroIO transform to serialize
+     // the objects.
+     .apply(AvroIO.Write.withSchema(PackageActivityInfo.class)
+                        .to(
+                            filePath + "package_info_out.txt"));
+    p.run();
+  }
 }

@@ -16,16 +16,14 @@
 
 package PartnerTraining;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * KeepTruckin Exercise 1
@@ -36,27 +34,29 @@ import org.slf4j.LoggerFactory;
  * This class requires PackageActivityInfo.java
  */
 public class Exercise1 {
-	private static final Logger LOG = LoggerFactory.getLogger(Exercise1.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Exercise1.class);
 
-	public static void main(String[] args) {
-		// Create a Pipeline using from any arguments passed in from the
-		// Run Configuration.
-		Pipeline p = Pipeline.create(PipelineOptionsFactory.fromArgs(args)
-				.withValidation().create());
+  public static void main(String[] args) {
+    // Create a Pipeline using from any arguments passed in from the
+    // Run Configuration.
+    Pipeline p =
+        Pipeline.create(PipelineOptionsFactory.fromArgs(args)
+                                              .withValidation().create());
 
-		// Create.of generates a PCollection of strings, one per log line,
-		// using the small set of log lines contained in the array MINI_LOG.
-		p.apply(Create.of(PackageActivityInfo.MINI_LOG))
-		// Apply a ParDo using the parsing function provided in PackageActivityInfo.	
-		 .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
-		// Define a DoFn inline to log the package info to the console. 
-		 .apply(ParDo.of(new DoFn<PackageActivityInfo, Void>() {
-					@Override
-					public void processElement(ProcessContext c) {
-						LOG.info(c.element().toString());
-					}
-				}));
+    // Create.of generates a PCollection of strings, one per log line,
+    // using the small set of log lines contained in the array MINI_LOG.
+    p.apply(Create.of(PackageActivityInfo.MINI_LOG))
+     // Apply a ParDo using the parsing function provided in
+     // PackageActivityInfo.
+     .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
+     // Define a DoFn inline to log the package info to the console.
+     .apply(ParDo.of(new DoFn<PackageActivityInfo, Void>() {
+       @Override
+       public void processElement(ProcessContext c) {
+         LOG.info(c.element().toString());
+       }
+     }));
 
-		p.run();
-	}
+    p.run();
+  }
 }

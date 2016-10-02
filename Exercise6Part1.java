@@ -14,12 +14,11 @@
  * the License.
  */
 
-package dataflow;
+package PartnerTraining;
+
+import java.util.HashSet;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.coders.AvroCoder;
-import com.google.cloud.dataflow.sdk.coders.KvCoder;
-import com.google.cloud.dataflow.sdk.coders.VarIntCoder;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
@@ -56,8 +55,8 @@ import org.slf4j.LoggerFactory;
  * existing 'SERVICE' run configuration.
  */
 @SuppressWarnings("serial")
-public class Exercise11 {
-	private static final Logger LOG = LoggerFactory.getLogger(Exercise11.class);
+public class Exercise6Part1 {
+	private static final Logger LOG = LoggerFactory.getLogger(Exercise6.class);
 
 	static class ParseLine extends DoFn<String, PackageActivityInfo> {
 		private final Aggregator<Long, Long> invalidLines = createAggregator(
@@ -76,15 +75,28 @@ public class Exercise11 {
 		}
 	}
 
-	static class PrintPackagesPerTruck
-			extends DoFn<KV<Integer, Iterable<PackageActivityInfo>>, String> {
+	static class FindUniqueVIPPackages extends
+			DoFn<KV<String, Iterable<PackageActivityInfo>>, String> {
 		@Override
 		public void processElement(ProcessContext c) {
-			String allPackages = "";
+			HashSet<String> previousPackages = new HashSet<String>();
+			int vipPackageCount = 0;
 			for (PackageActivityInfo packageInfo : c.element().getValue()) {
-				allPackages += packageInfo.getPackageId() + ",  ";
+				String currentPackageId = packageInfo.getPackageId();
+				if (currentPackageId.startsWith("VIP")) {
+					if (previousPackages.contains(currentPackageId)) {
+						// Ignore. We've already seen this one.
+					} else {
+						vipPackageCount++;
+						previousPackages.add(currentPackageId);
+					}
+				}
 			}
-			c.output(c.element().getKey() + ": " + allPackages);
+			c.output(c.element().getKey() + ": " + vipPackageCount);
+			// If running in the Cloud, the log lines below
+			// would appear in Cloud Logging
+			// LOG.info(c.element().getKey());
+			// LOG.info(c.element().getValue().toString());
 		}
 	}
 
@@ -92,17 +104,20 @@ public class Exercise11 {
 		Pipeline p = Pipeline.create(PipelineOptionsFactory.fromArgs(args)
 				.withValidation().create());
 
-		p.apply(TextIO.Read.from("gs://clouddfe-laraschmidt/package_log.txt"))
+		 p.apply(TextIO.Read.from("gs://deft-foegler/package_log.txt"))
+		//p.apply(TextIO.Read.from("/Users/foegler/Downloads/package_log.txt"))
 				.apply(ParDo.of(new ParseLine()))
-				.apply(WithKeys.of(new SerializableFunction<PackageActivityInfo, Integer>() {
-					public Integer apply(PackageActivityInfo s) {
-						return s.getTruckId();
-					}
-				})).setCoder(KvCoder.of(VarIntCoder.of(), AvroCoder.of(PackageActivityInfo.class)))
-				.apply(GroupByKey.<Integer, PackageActivityInfo>create())
-				.apply(ParDo.of(new PrintPackagesPerTruck()))
-				.apply(TextIO.Write.named("WritePackagePerId")
-						.to("gs://clouddfe-laraschmidt/packages_per_truck.txt"));
+				.apply(WithKeys
+						.of(new SerializableFunction<PackageActivityInfo, String>() {
+							public String apply(PackageActivityInfo s) {
+								return s.getLocation();
+							}
+						}))
+				.apply(GroupByKey.<String, PackageActivityInfo> create())
+				.apply(ParDo.of(new FindUniqueVIPPackages()))
+				.apply(TextIO.Write.named("WriteVIPCounts").to(
+						//"/Users/foegler/Downloads/output"));
+						"gs://deft-foegler/output"));
 		p.run();
 	}
 }

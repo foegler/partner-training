@@ -55,8 +55,8 @@ import org.slf4j.LoggerFactory;
  * TODO(laraschmidt): Make sure this runs after cleanups
  */
 
-public class Exercise10 {
-	private static final Logger LOG = LoggerFactory.getLogger(Exercise10.class);
+public class Exercise7 {
+	private static final Logger LOG = LoggerFactory.getLogger(Exercise7.class);
 
 	// A DoFn which processes each line of the old log into PackageActivityInfo.
 	// This

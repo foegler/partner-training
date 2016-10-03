@@ -23,6 +23,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Count;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.MapElements;
 import com.google.cloud.dataflow.sdk.transforms.Mean;
@@ -34,11 +35,13 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 
 /**
-
+ * Keep Truckin Exercise 6
+ * 
+ * Use Filters and Combine functions to calculate statistics for PCollections.
  */
 @SuppressWarnings("serial")
 public class Exercise6 {
-  private static final Logger LOG = LoggerFactory.getLogger(Exercise6Old.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Exercise6.class);
 
   // A function to format the output count results.
   public static class FormatOutput extends
@@ -46,6 +49,16 @@ public class Exercise6 {
     @Override
     public String apply(KV<String, Long> input) {
       return input.getKey() + ": " + input.getValue();
+
+    }
+  }
+
+  // A function to format the output count results.
+  public static class GetValues extends
+      SimpleFunction<KV<String, Long>, Long> {
+    @Override
+    public Long apply(KV<String, Long> input) {
+      return input.getValue();
 
     }
   }
@@ -68,11 +81,10 @@ public class Exercise6 {
 
     // Read the log lines from file.
     PCollection<KV<String, Long>> counts =
-        p.apply(TextIO.Read.from(filePath))
+        p.apply(TextIO.Read.from(filePath + "package_log.txt"))
          // Parse the log lines into objects.
          .apply(ParDo.of(new PackageActivityInfo.ParseLine()))
-         // Apply a Filter to select the
-         // "VIP" packages.
+         // Apply a Filter to select the "VIP" packages.
          .apply(Filter.byPredicate(new SerializableFunction<PackageActivityInfo, Boolean>() {
            public Boolean apply(
                PackageActivityInfo s) {
@@ -80,16 +92,14 @@ public class Exercise6 {
                      .startsWith("VIP");
            }
          }))
-         // Extract the location as the key
-         // for each object.
+         // Extract the location as the key for each object.
          .apply(WithKeys.of(new SerializableFunction<PackageActivityInfo, String>() {
            public String apply(
                PackageActivityInfo s) {
              return s.getLocation();
            }
          }))
-         // Use the built-in perKey Count
-         // transform to count the number of
+         // Use the built-in perKey Count transform to count the number of
          // VIP packages for each location.
          .apply(Count.<String, PackageActivityInfo> perKey());
 
@@ -97,8 +107,20 @@ public class Exercise6 {
     counts.apply(MapElements.via(new FormatOutput()))
           // Log the results to a text file.
           .apply(TextIO.Write.named("WriteVIPCounts").to(filePath + "output"));
-    
-    counts.apply(Combine.<String, Long, Long>(new Mean.MeanLongFn()))
+
+    // Extract the values from the key-value pairs.
+    counts.apply(MapElements.via(new GetValues()))
+          // Calculate the mean number of VIP packages for all locations.
+          .apply(Mean.<Long> globally())
+          // Log to console / CloudLogging.
+          .apply(ParDo.of(new DoFn<Double, Void>() {
+            @Override
+            public void processElement(ProcessContext c) {
+              LOG.info("The Mean number of packages is " + c.element()
+                                                            .toString());
+            }
+          }));
+
     p.run();
   }
 }
